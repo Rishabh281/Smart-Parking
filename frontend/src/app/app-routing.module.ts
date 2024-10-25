@@ -9,13 +9,13 @@ import { ScanneroutComponent } from './pages/scannerout/scannerout.component';
 import { BookingComponent } from './pages/booking/booking.component';
 import { ControlgateComponent } from './pages/controlgate/controlgate.component';
 import { MonitorComponent } from './pages/monitor/monitor.component';
-
+import { RegisterComponent } from './pages/register/register.component'
 const routes: Routes = [
   { path: '', component: HomeComponent },
   { path: 'home', component: HomeComponent },
   { path: 'booking', component: BookingComponent },
   { path: 'xxx', component: ControlgateComponent },
-   
+  { path: 'register', component: RegisterComponent},
   {
     path: 'admin',
     component: AdminComponent,

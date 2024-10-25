@@ -17,6 +17,7 @@ import { QRCodeModule } from 'angularx-qrcode';
 import { QRCodeErrorCorrectionLevel } from "qrcode";
 import { ControlgateComponent } from './pages/controlgate/controlgate.component';
 import { MonitorComponent } from './pages/monitor/monitor.component';
+import { RegisterComponent } from './pages/register/register.component';
 
 @NgModule({
   declarations: [
@@ -29,7 +30,8 @@ import { MonitorComponent } from './pages/monitor/monitor.component';
     ScanneroutComponent,
     BookingComponent,
     ControlgateComponent,
-    MonitorComponent
+    MonitorComponent,
+    RegisterComponent
   ],
   imports: [
     BrowserModule,

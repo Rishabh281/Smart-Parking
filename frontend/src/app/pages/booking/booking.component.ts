@@ -14,11 +14,6 @@ export class BookingComponent {
     parkingname: '',
     count: 0,
     p1: '',
-    p10: '',
-    p11: '',
-    p12: '',
-    p13: '',
-    p14: '',
     p2: '',
     p3: '',
     p4: '',
@@ -27,6 +22,11 @@ export class BookingComponent {
     p7: '',
     p8: '',
     p9: '',
+    p10: '',
+    p11: '',
+    p12: '',
+    p13: '',
+    p14: '',
     updatedAt: '',
   };
   bookingData: any = {
@@ -43,17 +43,19 @@ export class BookingComponent {
   constructor(private apiService: ApiService, private router: Router) {}
 
   ngOnInit() {
-    if (localStorage.getItem('userData')) {
-      this.userData = localStorage.getItem('userData');
-      this.userData = JSON.parse(this.userData);
-      this.userid = this.userData._id;
+    this.loadUserData()
+    this.getParking();
+  }
 
+  loadUserData() {
+    const storedUserData = localStorage.getItem('userData');
+    if (storedUserData) {
+      this.userData = JSON.parse(storedUserData);
+      this.userid = this.userData._id;
       this.getUserData(this.userid);
     } else {
       this.router.navigate(['/home']);
     }
-
-    this.getParking();
   }
 
   slotSelect(slot: any) {
@@ -61,72 +63,83 @@ export class BookingComponent {
   }
 
   getParking() {
-    this.apiService.getParking().subscribe((data: any[]) => {
-      this.parkingData = data;
-      console.log(this.parkingData, 'parking Data');
+    this.apiService.getParking().subscribe({
+      next: (data: any) => {
+        this.parkingData = data;
+        console.log(this.parkingData, 'parking Data');
+      },
+      error: (err) => {
+        console.error('Error fetching parking data', err);
+      }
     });
   }
-
-  getUserData(id: any) {
-    this.apiService.getUserById(id).subscribe((data: any[]) => {
-      this.userData = data;
-      this.userData = this.userData.data;
-      console.log(this.userData, 'latest');
+  getUserData(id: string) {
+    this.apiService.getUserById(id).subscribe({
+      next: (data: any) => {
+        this.userData = data.data;
+        console.log(this.userData, 'latest user data');
+      },
+      error: (err) => {
+        console.error('Error fetching user data', err);
+      }
     });
   }
 
   doBooking() {
-    this.apiService.getParking().subscribe((data: any[]) => {
-      this.parkingData = data;
-      console.log(this.parkingData.p4);
+    const selectedSlotStatus = this.parkingData.slots[this.bookingData.slot];
+    
+    if (selectedSlotStatus === 'vacant') {
+      this.apiService.updateParking({ [this.bookingData.slot]: 'booked' }).subscribe({
+        next: (data: any) => {
+          this.apiStatus = data;
 
-      if (this.parkingData[this.bookingData.slot] === 'vacant') {
-        console.log('entering if condition');
-        this.apiService
-          .updateParking({ [this.bookingData.slot]: 'booked' })
-          .subscribe((data: any[]) => {
-            this.apiStatus = data;
+          if (this.apiStatus.message === 'success') {
+            this.prepareBooking();
+          }
+        },
+        error: (err) => {
+          console.error('Error updating parking status', err);
+        }
+      });
+    } else {
+      alert('Slot not available');
+    }
+  }
 
-            if (this.apiStatus.message == 'success') {
-              console.log('booking data', this.bookingData);
+  prepareBooking() {
+    this.bookingData.status = 'booked';
 
-              this.bookingData.status = 'booked';
+    const currentTime: Date = new Date();
+    currentTime.setMinutes(currentTime.getMinutes() + this.bookingData.reservetime);
+    this.bookingData.reservetime = currentTime;
+    this.bookingData.userid = this.userid;
 
-              const currentTime: Date = new Date();
-              currentTime.setMinutes(currentTime.getMinutes() + this.bookingData.reservetime);
-              this.bookingData.reservetime = currentTime;
-              this.bookingData.userid = this.userid;
+    this.apiService.addBooking(this.bookingData).subscribe({
+      next: (data: any) => {
+        this.apiStatus = data;
+        if (this.apiStatus.message === 'success') {
+          this.updateUserBooking();
+        }
+      },
+      error: (err) => {
+        console.error('Error adding booking', err);
+      }
+    });
+  }
 
-              this.apiService
-                .addBooking(this.bookingData)
-                .subscribe((data: any[]) => {
-                  console.log(data, 'uuuuuuuuuuuuuuuu');
-
-                  this.apiStatus = data;
-                  if (this.apiStatus.message === 'success') {
-                    console.log('now update user');
-
-                    this.apiService
-                      .updateUser(
-                        { booking: this.apiStatus.data._id },
-                        this.userid
-                      )
-                      .subscribe((data: any[]) => {
-                        this.apiStatus = data;
-                        if (this.apiStatus.message == 'success') {
-                          console.log(this.apiStatus, 'user updated data');
-
-                          this.userData = this.apiStatus.data;
-                        } else {
-                          console.log('error updating user');
-                        }
-                      });
-                  }
-                });
-            }
-          });
-      } else {
-        alert('slot not available');
+  updateUserBooking() {
+    this.apiService.updateUser ({ booking: this.apiStatus.data._id }, this.userid).subscribe({
+      next: (data: any) => {
+        this.apiStatus = data;
+        if (this.apiStatus.message === 'success') {
+          this.userData = this.apiStatus.data;
+          console.log('User  updated successfully', this.userData);
+        } else {
+          console.error('Error updating user');
+        }
+      },
+      error: (err) => {
+        console.error('Error updating user', err);
       }
     });
   }

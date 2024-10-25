@@ -14,29 +14,40 @@ export class HomeComponent {
   constructor(private apiService: ApiService, private router: Router ) {}
 
   doLogin() {
-    console.log('running do login');
-    if (this.loginData.email == '') {
-      alert('Email can not be blank');
+    if (!this.loginData.email.trim()) {
+      alert('Email cannot be blank');
       return;
-    } else if (this.loginData.password == '') {
-      alert('password can not be blank');
+    }
+    if (!this.loginData.password.trim()) {
+      alert('Password cannot be blank');
       return;
-    } else if (this.loginData.role == '') {
-      alert('Role can not be blank');
+    }
+    if (!this.loginData.role.trim()) {
+      alert('Role cannot be blank');
       return;
-    } else {
-      this.apiService.login(this.loginData).subscribe((data: any[]) => {
-        this.userData = data;
-        console.log(this.userData, "userdata")
-        console.log(this.userData.data._id);
+    }
+
+    this.apiService.login(this.loginData).subscribe({
+      next: (response: any) => {
+        this.userData = response;
+        console.log('User data:', this.userData);
+
         if (this.userData.message === 'success') {
-          localStorage.setItem("userData", JSON.stringify(this.userData.data));
-          localStorage.setItem("token", JSON.stringify(this.userData.token));
+          // Save user info and token to local storage
+          localStorage.setItem('userData', JSON.stringify(this.userData.data));
+          localStorage.setItem('token', JSON.stringify(this.userData.token));
+
+          // Redirect to admin page
           this.router.navigate(['/admin']);
         } else {
-          alert(this.userData.message);
+          // Show error message from server
+          alert(this.userData.message || 'Login failed');
         }
-      });
-    }
+      },
+      error: (err) => {
+        console.error('Login error:', err);
+        alert('An error occurred during login. Please try again.');
+      }
+    });
   }
 }
