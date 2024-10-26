@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
 import { ApiService } from '../../services/api.service';
 import { Router } from '@angular/router';
 
@@ -7,33 +7,14 @@ import { Router } from '@angular/router';
   templateUrl: './booking.component.html',
   styleUrls: ['./booking.component.css'],
 })
-export class BookingComponent {
+export class BookingComponent implements OnInit {
   userData: any;
-  parkingData: any = {
-    _id: '',
-    parkingname: '',
-    count: 0,
-    p1: '',
-    p2: '',
-    p3: '',
-    p4: '',
-    p5: '',
-    p6: '',
-    p7: '',
-    p8: '',
-    p9: '',
-    p10: '',
-    p11: '',
-    p12: '',
-    p13: '',
-    p14: '',
-    updatedAt: '',
-  };
+  parkingData: any = {};
   bookingData: any = {
     registration: '',
     parkingid: '65e9621bd0f445c63fef5e7d',
     slot: '',
-    reservetime: '',
+    reservetime: 0,
     status: '',
     userid: '',
   };
@@ -43,11 +24,6 @@ export class BookingComponent {
   constructor(private apiService: ApiService, private router: Router) {}
 
   ngOnInit() {
-    this.loadUserData()
-    this.getParking();
-  }
-
-  loadUserData() {
     const storedUserData = localStorage.getItem('userData');
     if (storedUserData) {
       this.userData = JSON.parse(storedUserData);
@@ -56,6 +32,7 @@ export class BookingComponent {
     } else {
       this.router.navigate(['/home']);
     }
+    this.getParking();
   }
 
   slotSelect(slot: any) {
@@ -63,84 +40,80 @@ export class BookingComponent {
   }
 
   getParking() {
-    this.apiService.getParking().subscribe({
-      next: (data: any) => {
+    this.apiService.getParking().subscribe(
+      (data: any) => {
         this.parkingData = data;
         console.log(this.parkingData, 'parking Data');
       },
-      error: (err) => {
-        console.error('Error fetching parking data', err);
+      (error) => {
+        console.error('Error fetching parking data', error);
       }
-    });
+    );
   }
-  getUserData(id: string) {
-    this.apiService.getUserById(id).subscribe({
-      next: (data: any) => {
+
+  getUserData(id: any) {
+    this.apiService.getUserById(id).subscribe(
+      (data: any) => {
         this.userData = data.data;
-        console.log(this.userData, 'latest user data');
+        console.log(this.userData, 'latest');
       },
-      error: (err) => {
-        console.error('Error fetching user data', err);
+      (error) => {
+        console.error('Error fetching user data', error);
       }
-    });
+    );
   }
 
   doBooking() {
-    const selectedSlotStatus = this.parkingData.slots[this.bookingData.slot];
-    
-    if (selectedSlotStatus === 'vacant') {
-      this.apiService.updateParking({ [this.bookingData.slot]: 'booked' }).subscribe({
-        next: (data: any) => {
-          this.apiStatus = data;
+    this.apiService.getParking().subscribe(
+      (data: any) => {
+        this.parkingData = data;
+        if (this.parkingData[this.bookingData.slot] === 'vacant') {
+          this.apiService.updateParking({ [this.bookingData.slot]: 'booked' }).subscribe(
+            (data: any) => {
+              this.apiStatus = data;
+              if (this.apiStatus.message === 'success') {
+                this.bookingData.status = 'booked';
+                const currentTime: Date = new Date();
+                currentTime.setMinutes(currentTime.getMinutes() + this.bookingData.reservetime);
+                this.bookingData.reservetime = currentTime;
+                this.bookingData.userid = this.userid;
 
-          if (this.apiStatus.message === 'success') {
-            this.prepareBooking();
-          }
-        },
-        error: (err) => {
-          console.error('Error updating parking status', err);
-        }
-      });
-    } else {
-      alert('Slot not available');
-    }
-  }
-
-  prepareBooking() {
-    this.bookingData.status = 'booked';
-
-    const currentTime: Date = new Date();
-    currentTime.setMinutes(currentTime.getMinutes() + this.bookingData.reservetime);
-    this.bookingData.reservetime = currentTime;
-    this.bookingData.userid = this.userid;
-
-    this.apiService.addBooking(this.bookingData).subscribe({
-      next: (data: any) => {
-        this.apiStatus = data;
-        if (this.apiStatus.message === 'success') {
-          this.updateUserBooking();
-        }
-      },
-      error: (err) => {
-        console.error('Error adding booking', err);
-      }
-    });
-  }
-
-  updateUserBooking() {
-    this.apiService.updateUser ({ booking: this.apiStatus.data._id }, this.userid).subscribe({
-      next: (data: any) => {
-        this.apiStatus = data;
-        if (this.apiStatus.message === 'success') {
-          this.userData = this.apiStatus.data;
-          console.log('User  updated successfully', this.userData);
+                this.apiService.addBooking(this.bookingData).subscribe(
+                  (data: any) => {
+                    this.apiStatus = data;
+                    if (this.apiStatus.message === 'success') {
+                      this.apiService.updateUser({ booking: this.apiStatus.data._id }, this.userid).subscribe(
+                        (data: any) => {
+                          this.apiStatus = data;
+                          if (this.apiStatus.message === 'success') {
+                            this.userData = this.apiStatus.data;
+                          } else {
+                            console.error('Error updating user');
+                          }
+                        },
+                        (error) => {
+                          console.error('Error updating user', error);
+                        }
+                      );
+                    }
+                  },
+                  (error) => {
+                    console.error('Error adding booking', error);
+                  }
+                );
+              }
+            },
+            (error) => {
+              console.error('Error updating parking', error);
+            }
+          );
         } else {
-          console.error('Error updating user');
+          alert('Slot not available');
         }
       },
-      error: (err) => {
-        console.error('Error updating user', err);
+      (error) => {
+        console.error('Error fetching parking data', error);
       }
-    });
+    );
   }
 }
